@@ -1,29 +1,56 @@
+"""Demo: regressão sintética com MLP."""
+
 import numpy as np
 
-# Teste manual sem hiperparametros
+from activations import ReLU, Linear
+from layer import Dense
+from losses import MSE
+from metrics import R2
+from monitor import TrainingMonitor
+from neural_net import NeuralNet
 
-def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+# ------------------------------------------------------------------
+# Dados sintéticos: y = 0.5*x1 + 2*x2 + ruído
+# ------------------------------------------------------------------
+np.random.seed(42)
+N = 200
+X = np.random.randn(N, 2)
+y = (0.5 * X[:, 0:1] + 2.0 * X[:, 1:2]) + 0.1 * np.random.randn(N, 1)
 
-def loss(y_true, y_pred):
-    return np.mean((y_true - y_pred) ** 2)
+split = int(0.8 * N)
+X_train, X_val = X[:split], X[split:]
+y_train, y_val = y[:split], y[split:]
 
-X = np.array([[0.5, 0.1], 
-              [0.2, 0.6]])
+# ------------------------------------------------------------------
+# Construção da rede
+# ------------------------------------------------------------------
+net = NeuralNet(loss=MSE(), metric=R2())
+net.add_layer(Dense(2, 16, ReLU()))
+net.add_layer(Dense(16, 8, ReLU()))
+net.add_layer(Dense(8, 1, Linear()))
 
-y = np.array([[0.6, 0.8]])
+print(net)
 
-# Layer 3x2
-layer_1 = np.random.rand(3, 2)
-layer_2 = np.random.rand(1, 3)
+# ------------------------------------------------------------------
+# Treinamento com monitor
+# ------------------------------------------------------------------
+monitor = TrainingMonitor(snapshot_every=20)
 
-print("Layer 1 weights:\n", layer_1)
-print("Layer 2 weights:\n", layer_2)
+net.fit(
+    X_train, y_train,
+    epochs=200,
+    lr=0.01,
+    val_data=(X_val, y_val),
+    monitor=monitor,
+    verbose=True,
+    verbose_every=20,
+)
 
-Z1 = X @ layer_1.T # @ é o operador de multiplicação de matrizes
-A1 = sigmoid(Z1)
-Z2 = A1 @ layer_2.T
-A2 = sigmoid(Z2)
-
-print("Output:\n", A2)
+# ------------------------------------------------------------------
+# Visualizações
+# ------------------------------------------------------------------
+monitor.plot_loss()
+monitor.plot_metric(metric_name="R²")
+monitor.plot_activation_histograms(epochs_to_show=4)
+monitor.plot_gradient_histograms(epochs_to_show=4)
 
