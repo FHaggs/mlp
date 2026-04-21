@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from optimizers import SGD, Adam
 
 import numpy as np
 
@@ -28,10 +29,11 @@ class NeuralNet:
             val_data=(X_val, y_val), monitor=monitor)
     """
 
-    def __init__(self, loss, metric=None) -> None:
+    def __init__(self, loss, metric=None, optimizer=None) -> None:
         self.loss_fn = loss
         self.metric_fn = metric
         self.layers: list["Dense"] = []
+        self.optimizer = optimizer if optimizer is not None else SGD(lr=0.01)
 
     # ------------------------------------------------------------------
     # Construção
@@ -53,10 +55,8 @@ class NeuralNet:
         for layer in reversed(self.layers):
             dA = layer.backward(dA)
 
-    def _update_weights(self, lr: float) -> None:
-        for layer in self.layers:
-            layer.W -= lr * layer.grads["dW"]
-            layer.b -= lr * layer.grads["db"]
+    def _update_weights(self) -> None:
+        self.optimizer.update(self.layers)
 
     # ------------------------------------------------------------------
     # Treinamento
@@ -66,18 +66,18 @@ class NeuralNet:
         X: np.ndarray,
         y: np.ndarray,
         epochs: int = 100,
-        lr: float = 0.01,
         val_data: tuple[np.ndarray, np.ndarray] | None = None,
         monitor: "TrainingMonitor | None" = None,
         verbose: bool = True,
         verbose_every: int = 10,
     ) -> None:
         for epoch in range(1, epochs + 1):
-            # --- passo de treino ---
             y_pred_train = self.forward(X)
             train_loss = self.loss_fn(y, y_pred_train)
             self.backward(y, y_pred_train)
-            self._update_weights(lr)
+            
+            # Agora não passamos mais o lr aqui, o otimizador já tem seus parâmetros
+            self._update_weights()
 
             # --- métricas ---
             train_metric = self.metric_fn(y, y_pred_train) if self.metric_fn else None

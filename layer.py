@@ -1,31 +1,24 @@
 import numpy as np
 from activations import Linear
-
+from initializers import He, Xavier, Normal, Uniform
 
 class Dense:
-    """Camada totalmente conectada.
-
-    Parâmetros
-    ----------
-    input_size  : dimensão de entrada
-    output_size : dimensão de saída
-    activation  : objeto de ativação (deve ter __call__ e .derivative)
-                  padrão = Linear (sem ativação)
-    """
-
-    def __init__(self, input_size: int, output_size: int, activation=None) -> None:
+    # Atualizamos a assinatura para receber o initializer
+    def __init__(self, input_size: int, output_size: int, activation=None, initializer=None) -> None:
         self.activation = activation if activation is not None else Linear()
 
-        # Inicialização He para ReLU, Xavier para as demais
-        # TODO: Permitir escolher entre outras estratégias de inicialização
-        # Recebe essas coisas por parametro
-        
-        scale = np.sqrt(2 / input_size) if repr(self.activation) == "relu" \
-            else np.sqrt(1 / input_size)
-        self.W = np.random.randn(output_size, input_size) * scale
+        # Se o usuário não passar um inicializador, fazemos uma escolha inteligente
+        # baseada na função de ativação
+        if initializer is None:
+            nome_ativacao = repr(self.activation)
+            if "relu" in nome_ativacao: # Pega tanto 'relu' quanto 'leaky_relu'
+                initializer = He()
+            else:
+                initializer = Xavier()
+
+        self.W = initializer(fan_in=input_size, fan_out=output_size)
         self.b = np.zeros((1, output_size))
 
-        # Preenchidos no forward — usados no backward e no monitor
         self._cache: dict = {}
         self.grads: dict = {}
 
