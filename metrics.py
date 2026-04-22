@@ -22,3 +22,15 @@ class R2:
 
     def __repr__(self) -> str:
         return "r2"
+
+
+class MulticlassAccuracy:
+    """Acurácia para classificação multiclasse com target one-hot."""
+
+    def __call__(self, y_true: np.ndarray, y_pred: np.ndarray) -> float:
+        true_class = np.argmax(y_true, axis=1)
+        pred_class = np.argmax(y_pred, axis=1)
+        return float(np.mean(pred_class == true_class))
+
+    def __repr__(self) -> str:
+        return "multiclass_accuracy"
