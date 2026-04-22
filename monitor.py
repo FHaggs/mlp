@@ -11,7 +11,7 @@ monitor.plot_gradient_histograms()
 """
 
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt

@@ -67,20 +67,52 @@ class NeuralNet:
         y: np.ndarray,
         epochs: int = 100,
         lr: float = 0.01,
+        batch_size: int | None = None,
+        shuffle: bool = True,
         val_data: tuple[np.ndarray, np.ndarray] | None = None,
         monitor: "TrainingMonitor | None" = None,
         verbose: bool = True,
         verbose_every: int = 10,
     ) -> None:
+        n_samples = X.shape[0]
+        bs = n_samples if (batch_size is None or batch_size <= 0) else batch_size
+
         for epoch in range(1, epochs + 1):
-            # --- passo de treino ---
-            y_pred_train = self.forward(X)
-            train_loss = self.loss_fn(y, y_pred_train)
-            self.backward(y, y_pred_train)
-            self._update_weights(lr)
+            # --- passo de treino (full batch ou mini-batch) ---
+            if shuffle:
+                indices = np.random.permutation(n_samples)
+                X_epoch = X[indices]
+                y_epoch = y[indices]
+            else:
+                X_epoch = X
+                y_epoch = y
+
+            total_loss = 0.0
+            total_metric = 0.0
+            seen = 0
+
+            for start in range(0, n_samples, bs):
+                end = min(start + bs, n_samples)
+                X_batch = X_epoch[start:end]
+                y_batch = y_epoch[start:end]
+
+                y_pred_batch = self.forward(X_batch)
+                batch_loss = self.loss_fn(y_batch, y_pred_batch)
+                self.backward(y_batch, y_pred_batch)
+                self._update_weights(lr)
+
+                batch_n = X_batch.shape[0]
+                seen += batch_n
+                total_loss += batch_loss * batch_n
+
+                if self.metric_fn is not None:
+                    batch_metric = self.metric_fn(y_batch, y_pred_batch)
+                    total_metric += batch_metric * batch_n
+
+            train_loss = total_loss / seen
 
             # --- métricas ---
-            train_metric = self.metric_fn(y, y_pred_train) if self.metric_fn else None
+            train_metric = (total_metric / seen) if self.metric_fn else None
 
             val_loss, val_metric = None, None
             if val_data is not None:
