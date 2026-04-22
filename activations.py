@@ -44,6 +44,7 @@ class Linear:
 
     def __repr__(self) -> str:
         return "linear"
+<<<<<<< master
     
 class LeakyReLU:
     def __init__(self, alpha: float = 0.01) -> None:
@@ -60,3 +61,20 @@ class LeakyReLU:
 
     def __repr__(self) -> str:
         return f"leaky_relu(alpha={self.alpha})"
+=======
+
+
+class Softmax:
+    def __call__(self, z: np.ndarray) -> np.ndarray:
+        z_shifted = z - np.max(z, axis=1, keepdims=True)
+        exp_z = np.exp(z_shifted)
+        return exp_z / np.sum(exp_z, axis=1, keepdims=True)
+
+    def derivative(self, z: np.ndarray) -> np.ndarray:
+        # With CategoricalCrossEntropy, dL/dZ is computed directly in the loss.
+        # Returning ones keeps layer.backward compatible in this setup.
+        return np.ones_like(z)
+
+    def __repr__(self) -> str:
+        return "softmax"
+>>>>>>> master
