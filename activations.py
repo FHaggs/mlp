@@ -59,3 +59,19 @@ class Softmax:
 
     def __repr__(self) -> str:
         return "softmax"
+
+class LeakyReLU:
+    def __init__(self, alpha: float = 0.01) -> None:
+        # alpha é a taxa de vazamento (geralmente um valor pequeno como 0.01)
+        self.alpha = alpha
+
+    def __call__(self, z: np.ndarray) -> np.ndarray:
+        # Se z > 0, retorna z. Se z <= 0, retorna z * alpha.
+        return np.where(z > 0, z, self.alpha * z)
+
+    def derivative(self, z: np.ndarray) -> np.ndarray:
+        # A derivada é 1 para valores positivos, e 'alpha' para valores negativos.
+        return np.where(z > 0, 1.0, self.alpha)
+
+    def __repr__(self) -> str:
+        return f"leaky_relu(alpha={self.alpha})"

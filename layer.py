@@ -1,5 +1,6 @@
 import numpy as np
 from activations import Linear
+from initializers import get_initializer
 
 
 class Dense:
@@ -11,19 +12,25 @@ class Dense:
     output_size : dimensão de saída
     activation  : objeto de ativação (deve ter __call__ e .derivative)
                   padrão = Linear (sem ativação)
+    initializer : estratégia de inicialização
+                  pode ser string ('he', 'xavier', 'normal', 'uniform')
+                  ou um callable(input_size, output_size)
+                  padrão = automático (He para ReLU, Xavier para as demais)
     """
 
-    def __init__(self, input_size: int, output_size: int, activation=None) -> None:
+    def __init__(
+        self,
+        input_size: int,
+        output_size: int,
+        activation=None,
+        initializer=None,
+    ) -> None:
         self.activation = activation if activation is not None else Linear()
 
-        # Inicialização He para ReLU, Xavier para as demais
-        # TODO: Permitir escolher entre outras estratégias de inicialização
-        # Recebe essas coisas por parametro
-        
-        scale = np.sqrt(2 / input_size) if repr(self.activation) == "relu" \
-            else np.sqrt(1 / input_size)
-        self.W = np.random.randn(output_size, input_size) * scale
-        self.b = np.zeros((1, output_size))
+        # Inicialização configurável: He, Xavier, Normal, Uniform ou callable.
+        self.initializer = get_initializer(initializer, activation=self.activation)
+        self.W: np.ndarray = self.initializer(input_size, output_size)
+        self.b: np.ndarray = np.zeros((1, output_size))
 
         # Preenchidos no forward — usados no backward e no monitor
         self._cache: dict = {}
