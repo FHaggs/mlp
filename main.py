@@ -7,7 +7,8 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
-from activations import Linear, ReLU, Sigmoid, Softmax, Tanh
+from activations import Linear, ReLU, Sigmoid, Softmax, Tanh, LeakyReLU
+from initializers import He, Xavier, Normal, Uniform
 from data_utils import load_boston_regression, load_mnist_multiclass
 from initializers import Normal
 from layer import Dense
@@ -25,8 +26,8 @@ def run_mnist_classification() -> None:
     )
 
     net = NeuralNet(loss=CategoricalCrossEntropy(), metric=MulticlassAccuracy(), optimizer="adam")
-    net.add_layer(Dense(784, 128, ReLU()))
-    net.add_layer(Dense(128, 64, ReLU()))
+    net.add_layer(Dense(784, 128, LeakyReLU(), initializer=He()))
+    net.add_layer(Dense(128, 64, LeakyReLU(), initializer=He()))
     net.add_layer(Dense(64, 10, Softmax()))
 
     print("Modo: classificação (MNIST)")
@@ -38,7 +39,7 @@ def run_mnist_classification() -> None:
         y_train,
         epochs=30,
         lr=0.001,
-        batch_size=128,
+        batch_size=256,
         shuffle=True,
         val_data=(X_val, y_val),
         monitor=monitor,
@@ -155,6 +156,8 @@ def run_vanishing_gradient_demo() -> None:
 
     net = NeuralNet(loss=CategoricalCrossEntropy(), metric=MulticlassAccuracy(), optimizer="sgd")
     net.add_layer(Dense(784, 128, Tanh(), initializer=Normal(std=1e-4))) # Inicialização fraca para mostrar o efeito de vanishing gradient.
+    net.add_layer(Dense(128, 128, Tanh(), initializer=Normal(std=1e-4)))
+    net.add_layer(Dense(128, 128, Tanh(), initializer=Normal(std=1e-4)))
     net.add_layer(Dense(128, 64, Tanh(), initializer=Normal(std=1e-4))) # Tanh é mais propenso a vanishing gradient do que ReLU.
     net.add_layer(Dense(64, 10, Softmax(), initializer=Normal(std=1e-4)))
 
@@ -165,7 +168,7 @@ def run_vanishing_gradient_demo() -> None:
     net.fit(
         X_train,
         y_train,
-        epochs=30,
+        epochs=15,
         lr=0.001,
         batch_size=128,
         shuffle=True,
@@ -188,7 +191,7 @@ def run_vanishing_gradient_demo() -> None:
 
     monitor.plot_loss()
     monitor.plot_metric(metric_name="Accuracy")
-    monitor.plot_activation_histograms(epochs_to_show=4)
+    monitor.plot_activation_histograms(epochs_to_show=3)
     monitor.plot_gradient_histograms(epochs_to_show=4)
 
 
