@@ -45,6 +45,7 @@ def run_mnist_classification() -> None:
         verbose=True,
         verbose_every=1,
     )
+    net.save("mnist_model.npz")
 
     sample_idx = 0
     pred = net.predict(X_val[sample_idx:sample_idx + 1])
@@ -61,6 +62,27 @@ def run_mnist_classification() -> None:
     monitor.plot_metric(metric_name="Accuracy")
     monitor.plot_activation_histograms(epochs_to_show=4)
     monitor.plot_gradient_histograms(epochs_to_show=4)
+
+
+def load_and_test_mnist_model() -> None:
+    net = NeuralNet.load_from_file("mnist_model.npz")
+    X_train, y_train, X_val, y_val = load_mnist_multiclass(
+        path="mnist.npz",
+        train_limit=12000,
+        val_limit=2000,
+    )
+
+    # Plotar e prever 5 amostras do conjunto de validação aleatorios
+    for _ in range(5):
+        sample_idx = np.random.randint(0, X_val.shape[0])
+        pred = net.predict(X_val[sample_idx:sample_idx + 1])
+        pred_class = int(pred.argmax(axis=1)[0])
+        true_class = int(y_val[sample_idx].argmax())
+        plt.figure(figsize=(4, 4))
+        plt.imshow(X_val[sample_idx].reshape(28, 28), cmap="gray")
+        plt.title(f"MNIST - True: {true_class}, Pred: {pred_class}")
+        plt.axis("off")
+        plt.show()
 
 
 def run_boston_regression() -> None:
@@ -215,7 +237,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="MLP demos: classificação, regressão e instabilidade de gradientes")
     parser.add_argument(
         "--mode",
-        choices=["mnist", "boston", "vanishing", "exploding"],
+        choices=["mnist", "boston", "vanishing", "exploding", "load"],
         default="mnist",
         help=(
             "Escolha o modo: 'mnist' (classificação), 'boston' (regressão), "
@@ -230,6 +252,8 @@ def main() -> None:
         run_boston_regression()
     elif args.mode == "vanishing":
         run_vanishing_gradient_demo()
+    elif args.mode == "load":
+        load_and_test_mnist_model()
     else:
         run_exploding_gradient_demo()
 

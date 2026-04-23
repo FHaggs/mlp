@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
 import numpy as np
 from optimizers import get_optimizer
 
-if TYPE_CHECKING:
-    from layer import Dense
-    from monitor import TrainingMonitor
+from layer import Dense
+from monitor import TrainingMonitor
 
 
 class NeuralNet:
@@ -160,3 +158,42 @@ class NeuralNet:
         lines.append(f"  loss={self.loss_fn}, metric={self.metric_fn}, optimizer={self.optimizer}")
         lines.append(")")
         return "\n".join(lines)
+
+    def dump(self) -> dict:
+        """Retorna um dicionário com os pesos atuais da rede."""
+        return {
+            "layers": [
+                {
+                    "type": layer.__class__.__name__,
+                    "weights": layer.W.copy(),
+                    "biases": layer.b.copy(),
+                }
+                for layer in self.layers
+            ]
+        }
+    def save(self, path: str) -> None:
+        """Salva os pesos atuais da rede em um arquivo .npz."""
+        data = self.dump()
+        np.savez_compressed(path, **data)
+
+    @classmethod
+    def load(cls, data: dict) -> "NeuralNet":
+        """Cria uma NeuralNet a partir de um dicionário (formato de dump())."""
+        net = cls(loss=None)  # loss e metric podem ser configurados depois
+        for layer_info in data["layers"]:
+            layer_type = layer_info["type"]
+            if layer_type == "Dense":
+                input_dim = layer_info["weights"].shape[0]
+                output_dim = layer_info["weights"].shape[1]
+                layer = Dense(input_dim, output_dim, activation=None)
+                layer.W = layer_info["weights"]
+                layer.b = layer_info["biases"]
+                net.add_layer(layer)
+            else:
+                raise ValueError(f"Tipo de camada desconhecido: {layer_type}")
+        return net
+    @classmethod
+    def load_from_file(cls, path: str) -> "NeuralNet":
+        """Carrega uma NeuralNet a partir de um arquivo .npz salvo por save()."""
+        data = np.load(path, allow_pickle=True)
+        return cls.load(data)
