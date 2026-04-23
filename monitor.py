@@ -78,10 +78,25 @@ class TrainingMonitor:
     # ------------------------------------------------------------------
     def plot_loss(self) -> None:
         """Custo vs Época (treino e validação)."""
+        train_losses = np.asarray(self.train_losses, dtype=float)
+        val_losses = np.asarray(self.val_losses, dtype=float) if self.val_losses else np.array([])
+        epochs = np.asarray(self.epochs, dtype=int)
+
+        train_mask = np.isfinite(train_losses)
+        val_mask = np.isfinite(val_losses) if val_losses.size > 0 else np.array([], dtype=bool)
+
+        if not np.any(train_mask) and (val_losses.size == 0 or not np.any(val_mask)):
+            print("Nenhum valor finito de loss para plotar.")
+            return
+
         fig, ax = plt.subplots(figsize=(7, 4))
-        ax.plot(self.epochs, self.train_losses, label="Treino")
-        if self.val_losses:
-            ax.plot(self.epochs, self.val_losses, label="Validação")
+        if np.any(train_mask):
+            ax.plot(epochs[train_mask], train_losses[train_mask], label="Treino")
+        if val_losses.size > 0 and np.any(val_mask):
+            # val_losses e train_losses crescem por época quando val_data existe.
+            val_epochs = epochs[:val_losses.size]
+            ax.plot(val_epochs[val_mask], val_losses[val_mask], label="Validação")
+
         ax.set_xlabel("Época")
         ax.set_ylabel("Loss")
         ax.set_title("Função de Custo vs Época")
@@ -91,13 +106,31 @@ class TrainingMonitor:
 
     def plot_metric(self, metric_name: str = "Métrica") -> None:
         """Métrica de avaliação vs Época (treino e validação)."""
-        if not self.train_metrics:
+        if not self.train_metrics and not self.val_metrics:
             print("Nenhuma métrica registrada.")
             return
+
+        train_metrics = np.asarray(self.train_metrics, dtype=float) if self.train_metrics else np.array([])
+        val_metrics = np.asarray(self.val_metrics, dtype=float) if self.val_metrics else np.array([])
+        epochs = np.asarray(self.epochs, dtype=int)
+
+        train_mask = np.isfinite(train_metrics) if train_metrics.size > 0 else np.array([], dtype=bool)
+        val_mask = np.isfinite(val_metrics) if val_metrics.size > 0 else np.array([], dtype=bool)
+
+        if (train_metrics.size == 0 or not np.any(train_mask)) and (
+            val_metrics.size == 0 or not np.any(val_mask)
+        ):
+            print(f"Nenhum valor finito de {metric_name} para plotar.")
+            return
+
         fig, ax = plt.subplots(figsize=(7, 4))
-        ax.plot(self.epochs, self.train_metrics, label="Treino")
-        if self.val_metrics:
-            ax.plot(self.epochs, self.val_metrics, label="Validação")
+        if train_metrics.size > 0 and np.any(train_mask):
+            train_epochs = epochs[:train_metrics.size]
+            ax.plot(train_epochs[train_mask], train_metrics[train_mask], label="Treino")
+        if val_metrics.size > 0 and np.any(val_mask):
+            val_epochs = epochs[:val_metrics.size]
+            ax.plot(val_epochs[val_mask], val_metrics[val_mask], label="Validação")
+
         ax.set_xlabel("Época")
         ax.set_ylabel(metric_name)
         ax.set_title(f"{metric_name} vs Época")
@@ -171,7 +204,19 @@ class TrainingMonitor:
                 ax = axes[row, col]
                 values = data_dict.get(lname)
                 if values is not None and values.size > 0:
-                    ax.hist(values, bins=30, color="steelblue", edgecolor="none")
+                    finite_values = values[np.isfinite(values)]
+                    if finite_values.size > 0:
+                        ax.hist(finite_values, bins=30, color="steelblue", edgecolor="none")
+                    else:
+                        ax.text(
+                            0.5,
+                            0.5,
+                            "sem valores\nfinitos",
+                            ha="center",
+                            va="center",
+                            fontsize=8,
+                            transform=ax.transAxes,
+                        )
                 ax.set_title(f"{lname}\nÉpoca {snap.epoch}", fontsize=8)
                 ax.set_xlabel(title_prefix, fontsize=7)
                 ax.tick_params(labelsize=7)

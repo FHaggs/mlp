@@ -7,7 +7,7 @@ import numpy as np
 
 from matplotlib import pyplot as plt
 
-from activations import Linear, ReLU, Sigmoid, Softmax
+from activations import Linear, ReLU, Sigmoid, Softmax, Tanh
 from data_utils import load_boston_regression, load_mnist_multiclass
 from initializers import Normal
 from layer import Dense
@@ -125,37 +125,47 @@ def _print_gradient_summary(net: NeuralNet) -> None:
 
 def run_vanishing_gradient_demo() -> None:
     """Configuração proposital para mostrar gradiente que se dissipa."""
-    X_train, y_train, X_val, y_val = load_boston_regression(path="Boston House Prices.csv")
+    X_train, y_train, X_val, y_val = load_mnist_multiclass(
+        path="mnist.npz",
+        train_limit=12000,
+        val_limit=2000,
+    )
 
-    net = NeuralNet(loss=MSE(), metric=R2(), optimizer="sgd")
-    net.add_layer(Dense(X_train.shape[1], 64, Sigmoid(), initializer=Normal(std=0.02)))
-    net.add_layer(Dense(64, 64, Sigmoid(), initializer=Normal(std=0.02)))
-    net.add_layer(Dense(64, 64, Sigmoid(), initializer=Normal(std=0.02)))
-    net.add_layer(Dense(64, 64, Sigmoid(), initializer=Normal(std=0.02)))
-    net.add_layer(Dense(64, 64, Sigmoid(), initializer=Normal(std=0.02)))
-    net.add_layer(Dense(64, 32, Sigmoid(), initializer=Normal(std=0.02)))
-    net.add_layer(Dense(32, 1, Linear(), initializer=Normal(std=0.02)))
+    net = NeuralNet(loss=CategoricalCrossEntropy(), metric=MulticlassAccuracy(), optimizer="sgd")
+    net.add_layer(Dense(784, 128, Tanh(), initializer=Normal(std=1e-4))) # Inicialização fraca para mostrar o efeito de vanishing gradient.
+    net.add_layer(Dense(128, 64, Tanh(), initializer=Normal(std=1e-4))) # Tanh é mais propenso a vanishing gradient do que ReLU.
+    net.add_layer(Dense(64, 10, Softmax(), initializer=Normal(std=1e-4)))
 
-    print("Modo: demo de gradiente que se dissipa (vanishing)")
+    print("Modo: classificação (MNIST)")
     print(net)
 
     monitor = TrainingMonitor(snapshot_every=2)
     net.fit(
         X_train,
         y_train,
-        epochs=60,
-        lr=0.005,
-        batch_size=32,
+        epochs=30,
+        lr=0.001,
+        batch_size=128,
         shuffle=True,
         val_data=(X_val, y_val),
         monitor=monitor,
         verbose=True,
-        verbose_every=5,
+        verbose_every=1,
     )
 
-    _print_gradient_summary(net)
+    sample_idx = 0
+    pred = net.predict(X_val[sample_idx:sample_idx + 1])
+    pred_class = int(pred.argmax(axis=1)[0])
+    true_class = int(y_val[sample_idx].argmax())
+
+    plt.figure(figsize=(4, 4))
+    plt.imshow(X_val[sample_idx].reshape(28, 28), cmap="gray")
+    plt.title(f"MNIST - True: {true_class}, Pred: {pred_class}")
+    plt.axis("off")
+    plt.show()
+
     monitor.plot_loss()
-    monitor.plot_metric(metric_name="R2")
+    monitor.plot_metric(metric_name="Accuracy")
     monitor.plot_activation_histograms(epochs_to_show=4)
     monitor.plot_gradient_histograms(epochs_to_show=4)
 
@@ -164,13 +174,18 @@ def run_exploding_gradient_demo() -> None:
     """Configuração proposital para mostrar gradiente explosivo."""
     X_train, y_train, X_val, y_val = load_boston_regression(path="Boston House Prices.csv")
 
+    # Amplifica as entradas para aumentar escala dos gradientes de forma controlada.
+    X_train = X_train * 5.0
+    X_val = X_val * 5.0
+
     net = NeuralNet(loss=MSE(), metric=R2(), optimizer="sgd")
-    net.add_layer(Dense(X_train.shape[1], 64, ReLU(), initializer=Normal(std=2.0)))
-    net.add_layer(Dense(64, 64, ReLU(), initializer=Normal(std=2.0)))
-    net.add_layer(Dense(64, 64, ReLU(), initializer=Normal(std=2.0)))
-    net.add_layer(Dense(64, 64, ReLU(), initializer=Normal(std=2.0)))
-    net.add_layer(Dense(64, 32, ReLU(), initializer=Normal(std=2.0)))
-    net.add_layer(Dense(32, 1, Linear(), initializer=Normal(std=2.0)))
+    # Configuração agressiva para ficar instável, mas ainda permitir visualização.
+    net.add_layer(Dense(X_train.shape[1], 64, ReLU(), initializer=Normal(std=0.5)))
+    net.add_layer(Dense(64, 64, ReLU(), initializer=Normal(std=0.5)))
+    net.add_layer(Dense(64, 64, ReLU(), initializer=Normal(std=0.5)))
+    net.add_layer(Dense(64, 64, ReLU(), initializer=Normal(std=0.5)))
+    net.add_layer(Dense(64, 32, ReLU(), initializer=Normal(std=0.5)))
+    net.add_layer(Dense(32, 1, Linear(), initializer=Normal(std=0.5)))
 
     print("Modo: demo de gradiente explosivo (exploding)")
     print(net)
@@ -179,8 +194,8 @@ def run_exploding_gradient_demo() -> None:
     net.fit(
         X_train,
         y_train,
-        epochs=30,
-        lr=0.1,
+        epochs=40,
+        lr=0.015,
         batch_size=32,
         shuffle=True,
         val_data=(X_val, y_val),
