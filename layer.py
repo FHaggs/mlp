@@ -45,12 +45,16 @@ class Dense:
         Z = self._cache["Z"]
         A_prev = self._cache["A_prev"]
 
-        dZ = dA * self.activation.derivative(Z)     # hadamard
+        # S(i) = dJ/dA(i) * dA(i)/dZ(i)
+        # Na última camada, dA vem da loss: S(l) = dJ/dA(l) * dA(l)/dZ(l)
+        # Nas camadas anteriores, dA já carrega S(i+1) * T(i+1), então:
+        #   S(i) = S(i+1) * T(i+1) * a'(i)
+        dZ = dA * self.activation.derivative(Z)     # S(i)
 
         n = A_prev.shape[0]
-        dW = (A_prev.T @ dZ).T / n                  # (output_size, input_size)
-        db = np.mean(dZ, axis=0, keepdims=True)      # (1, output_size)
-        dA_prev = dZ @ self.W                        # (n_samples, input_size)
+        dW = (A_prev.T @ dZ).T / n                  # dJ/dT(i) = S(i) * a(i-1)
+        db = np.mean(dZ, axis=0, keepdims=True)      # dJ/db(i) = S(i)
+        dA_prev = dZ @ self.W                        # S(i) * T(i) — vira o dA da camada anterior
 
         self.grads = {"dW": dW, "db": db, "dZ": dZ}
         return dA_prev
