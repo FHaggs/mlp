@@ -22,7 +22,7 @@ X_train, y_train, X_val, y_val = load_mnist_multiclass(
 # ------------------------------------------------------------------
 # Construção da rede
 # ------------------------------------------------------------------
-net = NeuralNet(loss=CategoricalCrossEntropy(), metric=MulticlassAccuracy())
+net = NeuralNet(loss=CategoricalCrossEntropy(), metric=MulticlassAccuracy(), optimizer="adam")
 net.add_layer(Dense(784, 128, ReLU()))
 net.add_layer(Dense(128, 64, ReLU()))
 net.add_layer(Dense(64, 10, Softmax()))

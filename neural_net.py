@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from optimizers import get_optimizer
 
 if TYPE_CHECKING:
     from layer import Dense
@@ -21,16 +22,17 @@ class NeuralNet:
 
     Exemplo
     -------
-    net = NeuralNet(loss=MSE(), metric=R2())
+    net = NeuralNet(loss=MSE(), metric=R2(), optimizer="adam")
     net.add_layer(Dense(2, 8, ReLU()))
     net.add_layer(Dense(8, 1, Linear()))
     net.fit(X_train, y_train, epochs=200, lr=0.01,
             val_data=(X_val, y_val), monitor=monitor)
     """
 
-    def __init__(self, loss, metric=None) -> None:
+    def __init__(self, loss, metric=None, optimizer=None) -> None:
         self.loss_fn = loss
         self.metric_fn = metric
+        self.optimizer = get_optimizer(optimizer)
         self.layers: list["Dense"] = []
 
     # ------------------------------------------------------------------
@@ -54,9 +56,7 @@ class NeuralNet:
             dA = layer.backward(dA)
 
     def _update_weights(self, lr: float) -> None:
-        for layer in self.layers:
-            layer.W -= lr * layer.grads["dW"]
-            layer.b -= lr * layer.grads["db"]
+        self.optimizer.update(self.layers, lr)
 
     # ------------------------------------------------------------------
     # Treinamento
@@ -67,6 +67,7 @@ class NeuralNet:
         y: np.ndarray,
         epochs: int = 100,
         lr: float = 0.01,
+        optimizer=None,
         batch_size: int | None = None,
         shuffle: bool = True,
         val_data: tuple[np.ndarray, np.ndarray] | None = None,
@@ -74,6 +75,9 @@ class NeuralNet:
         verbose: bool = True,
         verbose_every: int = 10,
     ) -> None:
+        if optimizer is not None:
+            self.optimizer = get_optimizer(optimizer)
+
         n_samples = X.shape[0]
         bs = n_samples if (batch_size is None or batch_size <= 0) else batch_size
 
@@ -153,6 +157,6 @@ class NeuralNet:
         lines = ["NeuralNet("]
         for i, layer in enumerate(self.layers):
             lines.append(f"  [{i}] {layer}")
-        lines.append(f"  loss={self.loss_fn}, metric={self.metric_fn}")
+        lines.append(f"  loss={self.loss_fn}, metric={self.metric_fn}, optimizer={self.optimizer}")
         lines.append(")")
         return "\n".join(lines)
