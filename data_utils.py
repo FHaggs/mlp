@@ -85,3 +85,50 @@ def load_mnist_multiclass(
     y_val_one_hot = _one_hot(y_val, num_classes=10)
 
     return X_train, y_train_one_hot, X_val, y_val_one_hot
+
+
+def load_boston_regression(
+    path: str = "Boston House Prices.csv",
+    val_split: float = 0.2,
+    seed: int = 42,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Load Boston Housing CSV for a regression task.
+
+    Returns train/validation arrays with:
+    - X standardized using train split statistics
+    - y with shape (n_samples, 1)
+    """
+    data_path = Path(path)
+    if not data_path.exists():
+        raise FileNotFoundError(
+            f"Arquivo não encontrado: {path}. Coloque o CSV na raiz do projeto."
+        )
+
+    data = np.genfromtxt(data_path, delimiter=",", skip_header=1, dtype=np.float32)
+    if data.ndim != 2 or data.shape[1] < 2:
+        raise ValueError("CSV inválido para Boston Housing: esperado pelo menos 2 colunas.")
+
+    X = data[:, :-1]
+    y = data[:, -1].reshape(-1, 1)
+
+    n_samples = X.shape[0]
+    val_size = max(1, int(n_samples * val_split))
+    rng = np.random.default_rng(seed)
+    indices = rng.permutation(n_samples)
+
+    val_idx = indices[:val_size]
+    train_idx = indices[val_size:]
+
+    X_train = X[train_idx]
+    y_train = y[train_idx]
+    X_val = X[val_idx]
+    y_val = y[val_idx]
+
+    mean = X_train.mean(axis=0, keepdims=True)
+    std = X_train.std(axis=0, keepdims=True)
+    std = np.where(std < 1e-9, 1.0, std)
+
+    X_train = (X_train - mean) / std
+    X_val = (X_val - mean) / std
+
+    return X_train.astype(np.float32), y_train.astype(np.float32), X_val.astype(np.float32), y_val.astype(np.float32)
