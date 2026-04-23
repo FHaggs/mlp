@@ -126,3 +126,45 @@ A leitura mais confiavel vem da combinacao:
 - loss + metrica + ativacoes + gradientes
 
 Quando os quatro contam a mesma historia, o diagnostico fica bem mais confiavel.
+
+## Demos praticas no projeto: vanishing e exploding
+
+Agora o `main.py` tem dois modos didaticos para reproduzir os problemas:
+
+1. `python main.py --mode vanishing`
+2. `python main.py --mode exploding`
+
+Ambos usam o dataset Boston para ficar rapido de executar.
+
+## Como identificar no modo vanishing
+
+Sinais tipicos esperados:
+
+1. `loss` melhora pouco ou muito lentamente.
+2. `R2` tende a estagnar em valor baixo.
+3. No histograma de gradientes, varias camadas ficam muito concentradas perto de zero.
+4. No resumo de gradientes impresso no terminal, `mean|dW|` e `||dW||2` ficam muito pequenos (por exemplo em notacao `e-08`, `e-10` etc, dependendo da rodada).
+
+Leitura:
+
+- O erro nao consegue propagar sinal forte ao longo da profundidade da rede.
+- Como resultado, pesos quase nao mudam em parte da rede.
+
+## Como identificar no modo exploding
+
+Sinais tipicos esperados:
+
+1. `loss` oscila fortemente ou diverge.
+2. `R2` pode piorar rapido e ficar muito instavel.
+3. Histograma de gradientes com caudas largas e valores muito altos.
+4. Resumo de gradientes com `max|dW|` e `||dW||2` muito altos; em casos extremos pode aparecer `inf` ou `nan` na loss/metricas.
+
+Leitura:
+
+- As atualizacoes ficam grandes demais e o treino "sai do trilho".
+
+## Regra de bolso para diagnostico rapido
+
+1. Quase tudo perto de zero por muitas epocas: suspeite vanishing.
+2. Valores muito grandes, explosivos, instabilidade numerica: suspeite exploding.
+3. Use sempre os quatro sinais juntos: loss, metrica, ativacoes e gradientes.
